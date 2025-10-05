@@ -34,10 +34,10 @@ fn main() {
     for x in 0..10 {
         let size = 1.0;
         let color = (1.0, 0.0, 0.0);
-        let dx = (x as f32);
+        let dx = x as f32;
 
         for z in 0..10 {
-            let dz = (z as f32);
+            let dz = z as f32;
             let position = Vector3::new(dx, 0.0, dz);
             let cube = Cube::new(size, color, position);
             cubes.push(cube);
