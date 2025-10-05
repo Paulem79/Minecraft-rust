@@ -1,63 +1,155 @@
-extern crate kiss3d;
+use std::f32::consts::PI;
 
-use kiss3d::camera::FirstPerson;
-use kiss3d::light::Light;
-use kiss3d::nalgebra::Point3;
-use kiss3d::nalgebra::Vector3;
-use kiss3d::scene::SceneNode;
-use kiss3d::window::Window;
+use bevy::{camera::visibility::RenderLayers, prelude::*, render::render_resource::TextureFormat};
+use bevy::{
+    text::FontSmoothing,
+};
+use bevy_dev_tools::{
+    fps_overlay::{FpsOverlayConfig, FpsOverlayPlugin, FrameTimeGraphConfig},
+};
 
-struct Cube {
-    size: f32,
-    color: (f32, f32, f32),
-    position: Vector3<f32>,
-}
+struct OverlayColor;
 
-impl Cube {
-    fn new(size: f32, color: (f32, f32, f32), position: Vector3<f32>) -> Self {
-        Cube { size, color, position }
-    }
-
-    fn add_to_window(&self, window: &mut Window) -> SceneNode {
-        let mut node = window.add_cube(self.size, self.size, self.size);
-        node.set_color(self.color.0, self.color.1, self.color.2);
-        node.set_local_translation(self.position.into());
-        node
-    }
+impl OverlayColor {
+    const RED: Color = Color::srgb(1.0, 0.0, 0.0);
+    const GREEN: Color = Color::srgb(0.0, 1.0, 0.0);
 }
 
 fn main() {
-    env_logger::init();
-    let mut window = Window::new("Kiss3d: cube");
+    App::new()
+        .add_plugins((
+            DefaultPlugins,
+            FpsOverlayPlugin {
+                config: FpsOverlayConfig {
+                    text_config: TextFont {
+                        // Here we define size of our overlay
+                        font_size: 42.0,
+                        // If we want, we can use a custom font
+                        font: default(),
+                        // We could also disable font smoothing,
+                        font_smoothing: FontSmoothing::default(),
+                        ..default()
+                    },
+                    // We can also change color of the overlay
+                    text_color: OverlayColor::GREEN,
+                    // We can also set the refresh interval for the FPS counter
+                    refresh_interval: core::time::Duration::from_millis(100),
+                    enabled: true,
+                    frame_time_graph_config: FrameTimeGraphConfig {
+                        enabled: true,
+                        // The minimum acceptable fps
+                        min_fps: 30.0,
+                        // The target fps
+                        target_fps: 144.0,
+                    },
+                },
+            },
+        ))
+        .add_systems(Startup, setup)
+        .add_systems(Update, (cube_rotator_system, rotator_system))
+        .run();
+}
 
-    let mut cubes = Vec::new();
-    for x in 0..10 {
-        let size = 1.0;
-        let color = (1.0, 0.0, 0.0);
-        let dx = x as f32;
+// Marks the first pass cube (rendered to a texture.)
+#[derive(Component)]
+struct FirstPassCube;
 
-        for z in 0..10 {
-            let dz = z as f32;
-            let position = Vector3::new(dx, 0.0, dz);
-            let cube = Cube::new(size, color, position);
-            cubes.push(cube);
-        }
+// Marks the main pass cube, to which the texture is applied.
+#[derive(Component)]
+struct MainPassCube;
+
+fn setup(
+    mut commands: Commands,
+    mut meshes: ResMut<Assets<Mesh>>,
+    mut materials: ResMut<Assets<StandardMaterial>>,
+    mut images: ResMut<Assets<Image>>,
+) {
+    // This is the texture that will be rendered to.
+    let image = Image::new_target_texture(512, 512, TextureFormat::bevy_default());
+
+    let image_handle = images.add(image);
+
+    let cube_handle = meshes.add(Cuboid::new(4.0, 4.0, 4.0));
+    let cube_material_handle = materials.add(StandardMaterial {
+        base_color: Color::srgb(0.8, 0.7, 0.6),
+        reflectance: 0.02,
+        unlit: false,
+        ..default()
+    });
+
+    // This specifies the layer used for the first pass, which will be attached to the first pass camera and cube.
+    let first_pass_layer = RenderLayers::layer(1);
+
+    // The cube that will be rendered to the texture.
+    commands.spawn((
+        Mesh3d(cube_handle),
+        MeshMaterial3d(cube_material_handle),
+        Transform::from_translation(Vec3::new(0.0, 0.0, 1.0)),
+        FirstPassCube,
+        first_pass_layer.clone(),
+    ));
+
+    // Light
+    // NOTE: we add the light to both layers so it affects both the rendered-to-texture cube, and the cube on which we display the texture
+    // Setting the layer to RenderLayers::layer(0) would cause the main view to be lit, but the rendered-to-texture cube to be unlit.
+    // Setting the layer to RenderLayers::layer(1) would cause the rendered-to-texture cube to be lit, but the main view to be unlit.
+    commands.spawn((
+        PointLight::default(),
+        Transform::from_translation(Vec3::new(0.0, 0.0, 10.0)),
+        RenderLayers::layer(0).with(1),
+    ));
+
+    commands.spawn((
+        Camera3d::default(),
+        Camera {
+            // render before the "main pass" camera
+            order: -1,
+            target: image_handle.clone().into(),
+            clear_color: Color::WHITE.into(),
+            ..default()
+        },
+        Transform::from_translation(Vec3::new(0.0, 0.0, 15.0)).looking_at(Vec3::ZERO, Vec3::Y),
+        first_pass_layer,
+    ));
+
+    let cube_size = 4.0;
+    let cube_handle = meshes.add(Cuboid::new(cube_size, cube_size, cube_size));
+
+    // This material has the texture that has been rendered.
+    let material_handle = materials.add(StandardMaterial {
+        base_color_texture: Some(image_handle),
+        reflectance: 0.02,
+        unlit: false,
+        ..default()
+    });
+
+    // Main pass cube, with material containing the rendered first pass texture.
+    commands.spawn((
+        Mesh3d(cube_handle),
+        MeshMaterial3d(material_handle),
+        Transform::from_xyz(0.0, 0.0, 1.5).with_rotation(Quat::from_rotation_x(-PI / 5.0)),
+        MainPassCube,
+    ));
+
+    // The main pass camera.
+    commands.spawn((
+        Camera3d::default(),
+        Transform::from_xyz(0.0, 0.0, 15.0).looking_at(Vec3::ZERO, Vec3::Y),
+    ));
+}
+
+/// Rotates the inner cube (first pass)
+fn rotator_system(time: Res<Time>, mut query: Query<&mut Transform, With<FirstPassCube>>) {
+    for mut transform in &mut query {
+        transform.rotate_x(1.5 * time.delta_secs());
+        transform.rotate_z(1.3 * time.delta_secs());
     }
+}
 
-    let mut nodes = Vec::new();
-    for cube in &cubes {
-        let node = cube.add_to_window(&mut window);
-        nodes.push(node);
-    }
-
-    window.set_light(Light::StickToCamera);
-
-    // CAMERA
-    let eye = Point3::new(10.0f32, 10.0, 10.0);
-    let at = Point3::origin();
-    let mut first_person = FirstPerson::new(eye, at);
-
-    while !window.should_close() {
-        window.render_with_camera(&mut first_person);
+/// Rotates the outer cube (main pass)
+fn cube_rotator_system(time: Res<Time>, mut query: Query<&mut Transform, With<MainPassCube>>) {
+    for mut transform in &mut query {
+        transform.rotate_x(1.0 * time.delta_secs());
+        transform.rotate_y(0.7 * time.delta_secs());
     }
 }
