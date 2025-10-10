@@ -21,7 +21,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: olegtarasov/get-tag@v2.1.2
+      - uses: olegtarasov/get-tag@v2.1.4
         id: get_version
       - uses: actions/checkout@v4
         with:
@@ -79,7 +79,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: olegtarasov/get-tag@v2.1.2
+      - uses: olegtarasov/get-tag@v2.1.4
         id: get_version
       - uses: actions/checkout@v4
         with:
@@ -138,7 +138,7 @@ jobs:
     runs-on: windows-latest
 
     steps:
-      - uses: olegtarasov/get-tag@v2.1.2
+      - uses: olegtarasov/get-tag@v2.1.4
         id: get_version
       - uses: actions/checkout@v4
         with:
@@ -194,7 +194,7 @@ jobs:
     runs-on: macOS-latest
 
     steps:
-      - uses: olegtarasov/get-tag@v2.1.2
+      - uses: olegtarasov/get-tag@v2.1.4
         id: get_version
       - uses: actions/checkout@v4
         with:
@@ -250,7 +250,7 @@ jobs:
     runs-on: macOS-latest
 
     steps:
-      - uses: olegtarasov/get-tag@v2.1.2
+      - uses: olegtarasov/get-tag@v2.1.4
         id: get_version
       - uses: actions/checkout@v4
         with:
@@ -337,7 +337,7 @@ jobs:
           unzip butler.zip
           chmod +x butler
           ./butler -V
-      - uses: olegtarasov/get-tag@v2.1.2
+      - uses: olegtarasov/get-tag@v2.1.4
         id: get_version
       - name: Upload to itch.io
         env:
