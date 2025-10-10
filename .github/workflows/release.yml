@@ -23,7 +23,7 @@ jobs:
     steps:
       - uses: olegtarasov/get-tag@v2.1.2
         id: get_version
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           lfs: ${{ env.use_git_lfs }}
       - name: Set release tag
@@ -81,7 +81,7 @@ jobs:
     steps:
       - uses: olegtarasov/get-tag@v2.1.2
         id: get_version
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           lfs: ${{ env.use_git_lfs }}
       - name: Set release tag
@@ -140,7 +140,7 @@ jobs:
     steps:
       - uses: olegtarasov/get-tag@v2.1.2
         id: get_version
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           lfs: ${{ env.use_git_lfs }}
       - name: Set release tag
@@ -196,7 +196,7 @@ jobs:
     steps:
       - uses: olegtarasov/get-tag@v2.1.2
         id: get_version
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           lfs: ${{ env.use_git_lfs }}
       - name: Set release tag
@@ -252,7 +252,7 @@ jobs:
     steps:
       - uses: olegtarasov/get-tag@v2.1.2
         id: get_version
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           lfs: ${{ env.use_git_lfs }}
       - name: Set release tag
